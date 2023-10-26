@@ -92,3 +92,6 @@ def get_files_from_github(repo, folder_path):
     for content in contents:
         if content.type == "file":
             yield content.decoded_content, content.name
+
+if __name__ == "__main__":
+    main()
