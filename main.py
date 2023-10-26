@@ -1,5 +1,5 @@
-import os
 import hashlib
+from github import Github
 from pymongo import MongoClient
 
 # MongoDB Atlas connection details
@@ -39,13 +39,11 @@ def calculate_hash(data):
         data = data.encode()
     return hashlib.sha256(data).hexdigest()
 
-def create_new_block(previous_block, file_path):
+def create_new_block(previous_block, file_content, file_name):
     previous_hash = previous_block.current_hash
 
-    # Read the file content and calculate its hash
-    with open(file_path, 'rb') as file:
-        file_data = file.read()
-        data_hash = calculate_hash(file_data)
+    # Calculate the hash of the file content
+    data_hash = calculate_hash(file_content)
 
     # Combine the previous data hash and file hash to create the new block's data hash
     current_hash = calculate_hash(previous_block.current_hash + data_hash)
@@ -75,22 +73,22 @@ def main():
         previous_block = create_genesis_block()
         index = 0
 
-    # Specify the folder where files are located (e.g., "temp_uploads")
+    # Authenticate with GitHub using a personal access token
+    github = Github("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")
+
+    # Specify the GitHub repository and folder
+    repo = github.get_repo("amritosanto/SIH")
     folder_path = "temp_uploads"
 
-    # Loop through files in the folder
-    for file_name in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, file_name)
-
-        # Create a new block with the file
-        new_block = create_new_block(previous_block, file_path)
-
-        # Store the new block in MongoDB
+    # Loop through files in the folder and create blocks
+    for file_content, file_name in get_files_from_github(repo, folder_path):
+        new_block = create_new_block(previous_block, file_content, file_name)
         inserted_id = add_block_to_chain(new_block, collection1, index)
-
-        # Update the previous block with the new block
         previous_block = new_block
         index += 1
 
-if __name__ == "__main__":
-    main()
+def get_files_from_github(repo, folder_path):
+    contents = repo.get_contents(folder_path)
+    for content in contents:
+        if content.type == "file":
+            yield content.decoded_content, content.name
